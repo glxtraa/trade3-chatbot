@@ -32,6 +32,13 @@ setInterval(() => {
 }, 60 * 1000); // Check every minute
 
 /**
+ * Root route for basic health check
+ */
+app.get('/', (req, res) => {
+  res.send('WhatsApp Trade Finance Middleware is active.');
+});
+
+/**
  * GET Webhook for Meta verification
  */
 app.get('/webhook', (req, res) => {
