@@ -11,8 +11,8 @@ The system acts as a bridge between the **Meta WhatsApp Business API**, **OpenAI
 3. **Trigger Logic**: Watches for the string `"CONFIRM PO"` to start the extraction process.
 4. **Data Extraction**:
    - **Production**: Sends session history to OpenAI with a strict system prompt and `json_object` response format.
-   - **Test Mode**: Uses a robust regex-based logic to extract items, quantities, and prices from the chat history.
-5. **Validation**: Uses **Zod** to validate the extracted JSON against a complex Trade Finance schema.
+   - **Test Mode**: Uses specialized regex for **seafood commodities** (Lobster, Geoduck, Clams) and multiple **kilogram formats** (kg, kgs, kilograms).
+5. **Validation**: Uses **Zod** to validate the extracted JSON. Units like `kgs` are normalized to `KG` during extraction.
 6. **Downstream Action**:
    - Posts the validated JSON to the Trade Finance API via Axios.
    - Sends a text confirmation back to the user via WhatsApp.
@@ -40,10 +40,13 @@ The system acts as a bridge between the **Meta WhatsApp Business API**, **OpenAI
 4. **Implement Extraction**: 
    - Write the system prompt (found in `llm.js`).
    - Implement the regex fallback for `TEST_MODE`.
-5. **WhatsApp Media Flow**:
-   - First, `POST` the JSON string as a Buffer to `graph.facebook.com/v19.0/{PHONE_ID}/media`.
-   - Take the returned `id` and `POST` it as a `document` message to the user.
-6. **Vercel Deploy**: Ensure `module.exports = app` is present in `server.js` for serverless compatibility.
+6. **Vercel/Serverless Fix**:
+   - **Critical**: In serverless environments, the function terminates after `res.send`. To ensure async work (AI/API calls) is completed, the webhook handler must `await processPurchaseOrder(...)` BEFORE sending `res.sendStatus(200)`.
+7. **Replication Steps**:
+   - ... (rest same) ...
+   - **WhatsApp Media Flow**:
+     - `POST` the JSON string as a Buffer to `graph.facebook.com/v19.0/{PHONE_ID}/media` using `form-data`.
+     - Use the returned `id` to send a `document` message.
 
 ---
 *Created on 2026-03-10*

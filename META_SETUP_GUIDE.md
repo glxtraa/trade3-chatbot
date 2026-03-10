@@ -11,6 +11,7 @@ This guide walks you through setting up the Meta Developer Portal for this proje
 ## 2. Add WhatsApp to Your App
 1. In the sidebar of your new app, scroll down and find **Add Product**.
 2. Find the **WhatsApp** card and click **Set Up**.
+   - **Tip**: If you don't see "WhatsApp" in the sidebar, click the **"Add Product"** link first!
 3. Follow the prompts to select or create a Meta Business Account.
 
 ## 3. Configuration (The Webhook)
@@ -40,10 +41,13 @@ If your app is not yet "Live":
 4. You **must** go to [facebook.com/notifications](https://www.facebook.com/notifications) on your personal account and accept the tester invite.
 5. Back in **WhatsApp > API Setup**, select your phone number in the "To" field to start the 24-hour testing window.
 
-## 6. Testing the Connection
+## 6. Testing the Connection (The 24-Hour Window)
 1. From the **API Setup** page, click the blue **Send Message** button.
 2. You will receive a "Hello World" message on WhatsApp.
-3. **Reply to that message.** This opens the communication channel so your bot can talk back to you!
+3. **Reply to that message.** 
+   - **Why?** Meta rules require the user to message the business first. Replying "Hi" opens a **24-hour window** where your bot can then send its own replies (like the PO confirmation).
+   - If the window is closed, your bot will fail to send messages!
+
 
 ---
 *Created on 2026-03-10*
