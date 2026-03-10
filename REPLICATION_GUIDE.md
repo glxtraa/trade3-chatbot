@@ -46,6 +46,7 @@ The system acts as a bridge between the **Meta WhatsApp Business API**, **OpenAI
    - ... (rest same) ...
    - **WhatsApp Media Flow**:
      - `POST` the JSON string as a Buffer to `graph.facebook.com/v19.0/{PHONE_ID}/media` using `form-data`.
+     - **Note**: Use `contentType: 'text/plain'` even for `.json` files, as Meta rejects `application/json`.
      - Use the returned `id` to send a `document` message.
 
 ---

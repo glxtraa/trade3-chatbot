@@ -67,7 +67,7 @@ async function sendWhatsAppDocument(to, fileName, content) {
     const form = new FormData();
     form.append('file', Buffer.from(content), {
       filename: fileName,
-      contentType: 'application/json',
+      contentType: 'text/plain',
     });
     form.append('messaging_product', 'whatsapp');
 
