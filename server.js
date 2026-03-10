@@ -26,7 +26,7 @@ setInterval(() => {
   for (const [senderId, session] of chatSessions.entries()) {
     if (now - session.lastActive > SESSION_TIMEOUT_MS) {
       chatSessions.delete(senderId);
-      console.log(`Cleaned up expired session for \${senderId}`);
+      console.log(`Cleaned up expired session for ${senderId}`);
     }
   }
 }, 60 * 1000); // Check every minute
@@ -72,18 +72,18 @@ app.post('/webhook', async (req, res) => {
       if (messageObj.type === 'text') {
         textContent = messageObj.text.body;
       } else {
-         // Optionally handle document/image uploads here in future
-         console.log('Received non-text message type:', messageObj.type);
-         return;
+        // Optionally handle document/image uploads here in future
+        console.log('Received non-text message type:', messageObj.type);
+        return;
       }
 
       // 1. Maintain Conversation State
       let session = chatSessions.get(senderId) || { messages: [], lastActive: Date.now() };
-      session.messages.push(`User (\${senderId}): \${textContent}`);
+      session.messages.push(`User (${senderId}): ${textContent}`);
       session.lastActive = Date.now();
       chatSessions.set(senderId, session);
 
-      console.log(`Received message from \${senderId}: \${textContent}`);
+      console.log(`Received message from ${senderId}: ${textContent}`);
 
       // 2. Check for Trigger Word
       if (textContent.trim().toUpperCase() === 'CONFIRM PO') {
@@ -122,7 +122,7 @@ async function processPurchaseOrder(senderId, messages) {
     } else {
       const response = await axios.post(TRADE_API_URL, validatedPayload, {
         headers: {
-          'Authorization': `Bearer \${TRADE_API_KEY}`,
+          'Authorization': `Bearer ${TRADE_API_KEY}`,
           'Content-Type': 'application/json'
         }
       });
@@ -132,7 +132,7 @@ async function processPurchaseOrder(senderId, messages) {
     // 4. Construct Feedback Message
     const payloadBase = validatedPayload["Sending Payload"].base;
     const commodities = validatedPayload["Sending Payload"].commodities;
-    
+
     // Calculate total amount assuming price * quantity for each item
     const totalAmount = commodities.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
     const eta = new Date(payloadBase.estimated_delivery_date).toLocaleDateString();
@@ -140,17 +140,17 @@ async function processPurchaseOrder(senderId, messages) {
     const successMessage = `✅ Purchase Order Successfully Generated!
 
 ` +
-      `Title: \${payloadBase.title}
+      `Title: ${payloadBase.title}
 ` +
-      `Total Amount: \${totalAmount} \${payloadBase.currency || 'USD'}
+      `Total Amount: ${totalAmount} ${payloadBase.currency || 'USD'}
 ` +
-      `ETA: \${eta}
+      `ETA: ${eta}
 
 ` +
       `Your order has been registered in the system.`;
 
     await sendWhatsAppMessage(senderId, successMessage);
-    
+
     // Clean up the session history after successful processing
     chatSessions.delete(senderId);
 
@@ -162,7 +162,7 @@ async function processPurchaseOrder(senderId, messages) {
 
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
-    console.log(`Server is running on port \${PORT}`);
+    console.log(`Server is running on port ${PORT}`);
   });
 }
 

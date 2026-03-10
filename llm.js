@@ -30,9 +30,9 @@ async function extractPurchaseOrder(messages) {
     // MOCK MODE: Use simple regex instead of hitting the OpenAI API
     if (process.env.TEST_MODE === 'true') {
       console.log("TEST MODE ACTIVE: Using Regex Extraction instead of LLM");
-      const priceMatch = chatHistory.match(/\\$(\\d+)/);
-      const qtyMatch = chatHistory.match(/(?:\\b|^)(\\d+)\\s*(?:CTN|KG|units\\b)/i);
-      const itemMatch = chatHistory.match(/(?:of|buy|sell)\\s+([A-Za-z]+)/i);
+      const priceMatch = chatHistory.match(/\$(\d+)/);
+      const qtyMatch = chatHistory.match(/(?:\b|^)(\d+)\s*(?:CTN|KG|units\b)/i);
+      const itemMatch = chatHistory.match(/(?:of|buy|sell)\s+([A-Za-z]+)/i);
 
       return {
         "Sending Payload": {
@@ -72,10 +72,7 @@ async function extractPurchaseOrder(messages) {
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        {
-          role: "user", content: `Here is the chat history containing the trade documents and negotiation context:
-
-\${chatHistory}` }
+        { role: "user", content: `Here is the chat history containing the trade documents and negotiation context:\n\n${chatHistory}` }
       ],
       temperature: 0.1, // Keep it low for consistent data extraction
     });
