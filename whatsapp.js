@@ -59,6 +59,8 @@ async function sendWhatsAppDocument(to, fileName, content) {
   const PHONE_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const WHATSAPP_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
 
+  console.log(`Attempting to upload document for ${to}: ${fileName}`);
+
   try {
     // 1. Upload the content as a media object
     const FormData = require('form-data');
@@ -81,6 +83,7 @@ async function sendWhatsAppDocument(to, fileName, content) {
     );
 
     const mediaId = uploadRes.data.id;
+    console.log(`Media uploaded successfully. ID: ${mediaId}`);
 
     // 2. Send the message with the media ID
     const payload = {
@@ -105,9 +108,15 @@ async function sendWhatsAppDocument(to, fileName, content) {
       }
     );
 
+    console.log(`Document sent successfully to ${to}. Message ID: ${response.data.messages[0].id}`);
     return response.data;
   } catch (error) {
-    console.error("Error sending WhatsApp document:", error.response?.data || error.message);
+    console.error("Error in sendWhatsAppDocument process:");
+    if (error.response) {
+      console.error(JSON.stringify(error.response.data, null, 2));
+    } else {
+      console.error(error.message);
+    }
   }
 }
 
