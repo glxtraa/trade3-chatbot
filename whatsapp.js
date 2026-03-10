@@ -47,4 +47,68 @@ async function sendWhatsAppMessage(to, text) {
   }
 }
 
-module.exports = { sendWhatsAppMessage };
+/**
+ * Sends a document (JSON file) to a user via the Meta WhatsApp Cloud API.
+ * 
+ * @param {string} to - The recipient's phone number
+ * @param {string} fileName - The name of the file
+ * @param {string} content - Stringified JSON content
+ * @returns {Promise<Object>}
+ */
+async function sendWhatsAppDocument(to, fileName, content) {
+  const PHONE_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const WHATSAPP_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
+
+  try {
+    // 1. Upload the content as a media object
+    const FormData = require('form-data');
+    const form = new FormData();
+    form.append('file', Buffer.from(content), {
+      filename: fileName,
+      contentType: 'application/json',
+    });
+    form.append('messaging_product', 'whatsapp');
+
+    const uploadRes = await axios.post(
+      `https://graph.facebook.com/v19.0/${PHONE_ID}/media`,
+      form,
+      {
+        headers: {
+          ...form.getHeaders(),
+          'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
+        },
+      }
+    );
+
+    const mediaId = uploadRes.data.id;
+
+    // 2. Send the message with the media ID
+    const payload = {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: to,
+      type: "document",
+      document: {
+        id: mediaId,
+        filename: fileName
+      }
+    };
+
+    const response = await axios.post(
+      `https://graph.facebook.com/v19.0/${PHONE_ID}/messages`,
+      payload,
+      {
+        headers: {
+          'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Error sending WhatsApp document:", error.response?.data || error.message);
+  }
+}
+
+module.exports = { sendWhatsAppMessage, sendWhatsAppDocument };

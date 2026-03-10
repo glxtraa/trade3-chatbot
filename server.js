@@ -158,6 +158,10 @@ async function processPurchaseOrder(senderId, messages) {
 
     await sendWhatsAppMessage(senderId, successMessage);
 
+    // 5. Send JSON as an attachment
+    const fileName = `PO_${validatedPayload["Sending Payload"].base.title.replace(/\s+/g, '_')}.json`;
+    await require('./whatsapp').sendWhatsAppDocument(senderId, fileName, JSON.stringify(validatedPayload, null, 2));
+
     // Clean up the session history after successful processing
     chatSessions.delete(senderId);
 

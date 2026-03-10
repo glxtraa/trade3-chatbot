@@ -27,12 +27,27 @@ async function extractPurchaseOrder(messages) {
   try {
     const chatHistory = messages.join('\n');
 
-    // MOCK MODE: Use simple regex instead of hitting the OpenAI API
+    // MOCK MODE: Use improved regex instead of hitting the OpenAI API
     if (process.env.TEST_MODE === 'true') {
-      console.log("TEST MODE ACTIVE: Using Regex Extraction instead of LLM");
-      const priceMatch = chatHistory.match(/\$(\d+)/);
-      const qtyMatch = chatHistory.match(/(?:\b|^)(\d+)\s*(?:CTN|KG|units\b)/i);
-      const itemMatch = chatHistory.match(/(?:of|buy|sell)\s+([A-Za-z]+)/i);
+      console.log("TEST MODE ACTIVE: Using Improved Regex Extraction");
+
+      const priceMatch = chatHistory.match(/(?:\$|USD|EUR)\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s*(?:\$|USD|EUR)/i);
+      const qtyMatch = chatHistory.match(/(\d+(?:\.\d+)?)\s*(?:MT|metric tons|KG|units|CTN|items)\b/i);
+      const itemMatch = chatHistory.match(/(?:buy|order|of|item:)\s+([A-Za-z\s]{2,20})(?:\s+at|\s+for|\s+qty|$)/i);
+      const dateMatch = chatHistory.match(/(?:by|delivery|eta|date:)\s+([A-Za-z0-9\s,-/]+)(?:\.|$)/i);
+      const currencyMatch = chatHistory.match(/(USD|EUR|GBP|\$)/i);
+
+      let currency = "USD";
+      if (currencyMatch) {
+        const c = currencyMatch[0].toUpperCase();
+        currency = c === "$" ? "USD" : c;
+      }
+
+      let estDate = new Date();
+      if (dateMatch) {
+        const parsedDate = new Date(dateMatch[1].trim());
+        if (!isNaN(parsedDate.getTime())) estDate = parsedDate;
+      }
 
       return {
         "Sending Payload": {
@@ -42,26 +57,26 @@ async function extractPurchaseOrder(messages) {
           ],
           "commodities": [
             {
-              "name": itemMatch ? itemMatch[1] : "Mock Commodity",
-              "price": priceMatch ? parseInt(priceMatch[1]) : 500,
+              "name": itemMatch ? itemMatch[1].trim() : "Default Commodity",
+              "price": priceMatch ? parseFloat(priceMatch[1] || priceMatch[2]) : 100,
               "origin": "US",
-              "unit": "KG",
-              "quantity": qtyMatch ? parseInt(qtyMatch[1]) : 40
+              "unit": qtyMatch ? chatHistory.match(/(?:MT|metric tons|KG|units|CTN|items)/i)?.[0] || "units" : "units",
+              "quantity": qtyMatch ? parseFloat(qtyMatch[1]) : 1
             }
           ],
           "payment_schedules": [
             {
               "payment_percentage": 100,
               "payment_method": "Wire",
-              "memo": "Test Payment Schedule",
+              "memo": "Standard payment terms",
               "due_period": "30 days",
-              "documents": []
+              "documents": ["Commercial Invoice", "Bill of Lading"]
             }
           ],
           "base": {
-            "title": "Mock PO Title",
-            "estimated_delivery_date": new Date().toISOString(),
-            "currency": "USD"
+            "title": `PO for ${itemMatch ? itemMatch[1].trim() : "Goods"}`,
+            "estimated_delivery_date": estDate.toISOString(),
+            "currency": currency
           }
         }
       };
