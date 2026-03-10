@@ -8,7 +8,7 @@ const axios = require('axios');
  * @returns {Promise<Object>} The response data from WhatsApp API
  */
 async function sendWhatsAppMessage(to, text) {
-    const WHATSAPP_API_URL = \`https://graph.facebook.com/v19.0/\${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages\`;
+    const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/\${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
   const WHATSAPP_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
 
   if (!WHATSAPP_TOKEN || !process.env.WHATSAPP_PHONE_NUMBER_ID) {
@@ -30,12 +30,12 @@ async function sendWhatsAppMessage(to, text) {
 
     const response = await axios.post(WHATSAPP_API_URL, payload, {
       headers: {
-        'Authorization': \`Bearer \${WHATSAPP_TOKEN}\`,
+        'Authorization': `Bearer \${WHATSAPP_TOKEN}`,
         'Content-Type': 'application/json'
       }
     });
 
-    console.log(\`Message successfully sent to \${to}. Message ID: \${response.data.messages[0].id}\`);
+    console.log(`Message successfully sent to \${to}. Message ID: \${response.data.messages[0].id}`);
     return response.data;
   } catch (error) {
     console.error("Error sending WhatsApp message:");

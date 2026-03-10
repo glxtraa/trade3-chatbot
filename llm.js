@@ -2,7 +2,7 @@ const OpenAI = require('openai');
 
 // Initialize OpenAI SDK with API Key from environment variables
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY || (process.env.TEST_MODE === 'true' ? 'dummy' : undefined),
 });
 
 const SYSTEM_PROMPT = `You are an expert supply chain and trade finance data extraction AI. Your task is to analyze the provided trade documents (e.g., Commercial Invoices, Proforma Invoices, and Master Agreements) to generate a structured Purchase Order JSON payload.
@@ -24,18 +24,58 @@ Output ONLY valid JSON matching the exact schema definition requested.`;
  * @returns {Promise<Object>} The parsed JSON output from the LLM
  */
 async function extractPurchaseOrder(messages) {
-    try {
-        const chatHistory = messages.join('
-');
+  try {
+    const chatHistory = messages.join('\n');
 
-        const response = await openai.chat.completions.create({
-            model: "gpt-4-turbo",
-            response_format: { type: "json_object" },
-            messages: [
-                { role: "system", content: SYSTEM_PROMPT },
-                { role: "user", content: \`Here is the chat history containing the trade documents and negotiation context:
+    // MOCK MODE: Use simple regex instead of hitting the OpenAI API
+    if (process.env.TEST_MODE === 'true') {
+      console.log("TEST MODE ACTIVE: Using Regex Extraction instead of LLM");
+      const priceMatch = chatHistory.match(/\\$(\\d+)/);
+      const qtyMatch = chatHistory.match(/(?:\\b|^)(\\d+)\\s*(?:CTN|KG|units\\b)/i);
+      const itemMatch = chatHistory.match(/(?:of|buy|sell)\\s+([A-Za-z]+)/i);
 
-\${chatHistory}\` }
+      return {
+        "Sending Payload": {
+          "parties": [
+            { "company_id": 17, "name": "Dummy Seller" },
+            { "company_id": 161, "name": "Dummy Buyer" }
+          ],
+          "commodities": [
+            {
+              "name": itemMatch ? itemMatch[1] : "Mock Commodity",
+              "price": priceMatch ? parseInt(priceMatch[1]) : 500,
+              "origin": "US",
+              "unit": "KG",
+              "quantity": qtyMatch ? parseInt(qtyMatch[1]) : 40
+            }
+          ],
+          "payment_schedules": [
+            {
+              "payment_percentage": 100,
+              "payment_method": "Wire",
+              "memo": "Test Payment Schedule",
+              "due_period": "30 days",
+              "documents": []
+            }
+          ],
+          "base": {
+            "title": "Mock PO Title",
+            "estimated_delivery_date": new Date().toISOString(),
+            "currency": "USD"
+          }
+        }
+      };
+    }
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4-turbo",
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        {
+          role: "user", content: `Here is the chat history containing the trade documents and negotiation context:
+
+\${chatHistory}` }
       ],
       temperature: 0.1, // Keep it low for consistent data extraction
     });

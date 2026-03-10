@@ -26,7 +26,7 @@ setInterval(() => {
   for (const [senderId, session] of chatSessions.entries()) {
     if (now - session.lastActive > SESSION_TIMEOUT_MS) {
       chatSessions.delete(senderId);
-      console.log(\`Cleaned up expired session for \${senderId}\`);
+      console.log(`Cleaned up expired session for \${senderId}`);
     }
   }
 }, 60 * 1000); // Check every minute
@@ -79,11 +79,11 @@ app.post('/webhook', async (req, res) => {
 
       // 1. Maintain Conversation State
       let session = chatSessions.get(senderId) || { messages: [], lastActive: Date.now() };
-      session.messages.push(\`User (\${senderId}): \${textContent}\`);
+      session.messages.push(`User (\${senderId}): \${textContent}`);
       session.lastActive = Date.now();
       chatSessions.set(senderId, session);
 
-      console.log(\`Received message from \${senderId}: \${textContent}\`);
+      console.log(`Received message from \${senderId}: \${textContent}`);
 
       // 2. Check for Trigger Word
       if (textContent.trim().toUpperCase() === 'CONFIRM PO') {
@@ -117,14 +117,17 @@ async function processPurchaseOrder(senderId, messages) {
     const validatedPayload = validationResult.data;
 
     // 3. Send to Internal Trade API
-    const response = await axios.post(TRADE_API_URL, validatedPayload, {
-      headers: {
-        'Authorization': \`Bearer \${TRADE_API_KEY}\`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    console.log("Successfully posted PO to Trade API", response.status);
+    if (process.env.TEST_MODE === 'true') {
+      console.log("TEST MODE ACTIVE: Skipping Axios call to Trade API.", JSON.stringify(validatedPayload, null, 2));
+    } else {
+      const response = await axios.post(TRADE_API_URL, validatedPayload, {
+        headers: {
+          'Authorization': `Bearer \${TRADE_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log("Successfully posted PO to Trade API", response.status);
+    }
 
     // 4. Construct Feedback Message
     const payloadBase = validatedPayload["Sending Payload"].base;
@@ -134,17 +137,17 @@ async function processPurchaseOrder(senderId, messages) {
     const totalAmount = commodities.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
     const eta = new Date(payloadBase.estimated_delivery_date).toLocaleDateString();
 
-    const successMessage = \`✅ Purchase Order Successfully Generated!
+    const successMessage = `✅ Purchase Order Successfully Generated!
 
-\` +
-      \`Title: \${payloadBase.title}
-\` +
-      \`Total Amount: \${totalAmount} \${payloadBase.currency || 'USD'}
-\` +
-      \`ETA: \${eta}
+` +
+      `Title: \${payloadBase.title}
+` +
+      `Total Amount: \${totalAmount} \${payloadBase.currency || 'USD'}
+` +
+      `ETA: \${eta}
 
-\` +
-      \`Your order has been registered in the system.\`;
+` +
+      `Your order has been registered in the system.`;
 
     await sendWhatsAppMessage(senderId, successMessage);
     
@@ -159,7 +162,7 @@ async function processPurchaseOrder(senderId, messages) {
 
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
-    console.log(\`Server is running on port \${PORT}\`);
+    console.log(`Server is running on port \${PORT}`);
   });
 }
 
