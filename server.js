@@ -4,6 +4,7 @@ const axios = require('axios');
 const { extractPurchaseOrder } = require('./llm');
 const { purchaseOrderSchema } = require('./schema');
 const { sendWhatsAppMessage, sendWhatsAppDocument } = require('./whatsapp');
+const { sendTelegramMessage, sendTelegramDocument } = require('./telegram_helper');
 
 const app = express();
 app.use(express.json());
@@ -103,14 +104,48 @@ app.post('/webhook', async (req, res) => {
 });
 
 /**
+ * POST Webhook for incoming Telegram messages
+ */
+app.post('/telegram', async (req, res) => {
+  const { body } = req;
+  console.log("Incoming Telegram Request received.");
+
+  if (body.message && body.message.text) {
+    const senderId = body.message.chat.id.toString();
+    const textContent = body.message.text;
+
+    // 1. Maintain Conversation State
+    let session = chatSessions.get(senderId) || { messages: [], lastActive: Date.now() };
+    session.messages.push(`User (${senderId}): ${textContent}`);
+    session.lastActive = Date.now();
+    chatSessions.set(senderId, session);
+
+    console.log(`Received Telegram message from ${senderId}: ${textContent}`);
+
+    // 2. Check for Trigger Word
+    if (textContent.trim().toUpperCase() === 'CONFIRM PO') {
+      console.log(`Trigger "CONFIRM PO" (Telegram) received from ${senderId}. Starting extraction.`);
+      await processPurchaseOrder(senderId, session.messages, 'telegram');
+    }
+  }
+
+  res.sendStatus(200);
+});
+
+/**
  * Orchestrates the data extraction, validation, and downstream API Call.
  */
-async function processPurchaseOrder(senderId, messages) {
+async function processPurchaseOrder(senderId, messages, platform = 'whatsapp') {
   try {
-    console.log(`Processing PO for ${senderId}. History Length: ${messages.length}`);
+    console.log(`Processing PO for ${platform} user ${senderId}. History Length: ${messages.length}`);
     console.log("Full Message History for Extraction:", JSON.stringify(messages, null, 2));
 
-    await sendWhatsAppMessage(senderId, "Processing your request. Compiling history and generating Purchase Order...");
+    const statusMsg = "Processing your request. Compiling history and generating Purchase Order...";
+    if (platform === 'telegram') {
+      await sendTelegramMessage(senderId, statusMsg);
+    } else {
+      await sendWhatsAppMessage(senderId, statusMsg);
+    }
 
     // 1. Extract JSON via LLM
     const rawPayload = await extractPurchaseOrder(messages);
@@ -121,7 +156,11 @@ async function processPurchaseOrder(senderId, messages) {
     if (!validationResult.success) {
       console.error("Validation failed:", validationResult.error);
       const errorMsg = "Extraction failed due to missing or invalid fields. Please review the missing information and try again.";
-      await sendWhatsAppMessage(senderId, errorMsg);
+      if (platform === 'telegram') {
+        await sendTelegramMessage(senderId, errorMsg);
+      } else {
+        await sendWhatsAppMessage(senderId, errorMsg);
+      }
       return;
     }
 
@@ -160,18 +199,33 @@ async function processPurchaseOrder(senderId, messages) {
 ` +
       `Your order has been registered in the system.`;
 
-    await sendWhatsAppMessage(senderId, successMessage);
+    if (platform === 'telegram') {
+      await sendTelegramMessage(senderId, successMessage);
+    } else {
+      await sendWhatsAppMessage(senderId, successMessage);
+    }
 
     // 5. Send JSON as an attachment
     const fileName = `PO_${validatedPayload["Sending Payload"].base.title.replace(/\s+/g, '_')}.json`;
-    await sendWhatsAppDocument(senderId, fileName, JSON.stringify(validatedPayload, null, 2));
+    const jsonContent = JSON.stringify(validatedPayload, null, 2);
+
+    if (platform === 'telegram') {
+      await sendTelegramDocument(senderId, fileName, jsonContent);
+    } else {
+      await sendWhatsAppDocument(senderId, fileName, jsonContent);
+    }
 
     // Clean up the session history after successful processing
     chatSessions.delete(senderId);
 
   } catch (error) {
     console.error("Error processing PO:", error);
-    await sendWhatsAppMessage(senderId, "An error occurred while processing the PO. Please try again later or contact support.");
+    const genericError = "An error occurred while processing the PO. Please try again later or contact support.";
+    if (platform === 'telegram') {
+      await sendTelegramMessage(senderId, genericError);
+    } else {
+      await sendWhatsAppMessage(senderId, genericError);
+    }
   }
 }
 
