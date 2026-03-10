@@ -33,21 +33,21 @@ The system acts as a bridge between the **Meta WhatsApp Business API**, **OpenAI
 - `dotenv`: Environment variable management.
 - `form-data`: Required for the WhatsApp Media Upload process.
 
-## 4. Replication Steps
+## 4. Critical Technical Constraints (Vercel/Serverless)
+- **Function Termination**: In serverless environments, the function terminates after `res.send`. To ensure async work (AI/API calls) is completed, the webhook handler must `await processPurchaseOrder(...)` BEFORE sending `res.sendStatus(200)`.
+- **MIME Handling**: Meta's Media API rejects `application/json` for documents. You MUST use `contentType: 'text/plain'` even for `.json` files when using `form-data` to upload.
+
+## 5. Replication Steps
 1. **Initialize**: Create `package.json` and install dependencies.
 2. **Setup Express**: Implement the `/webhook` endpoint with Meta's challenge-response verification.
 3. **Internal State**: Create a Map to link messages to a phone number.
 4. **Implement Extraction**: 
    - Write the system prompt (found in `llm.js`).
    - Implement the regex fallback for `TEST_MODE`.
-6. **Vercel/Serverless Fix**:
-   - **Critical**: In serverless environments, the function terminates after `res.send`. To ensure async work (AI/API calls) is completed, the webhook handler must `await processPurchaseOrder(...)` BEFORE sending `res.sendStatus(200)`.
-7. **Replication Steps**:
-   - ... (rest same) ...
-   - **WhatsApp Media Flow**:
-     - `POST` the JSON string as a Buffer to `graph.facebook.com/v19.0/{PHONE_ID}/media` using `form-data`.
-     - **Note**: Use `contentType: 'text/plain'` even for `.json` files, as Meta rejects `application/json`.
-     - Use the returned `id` to send a `document` message.
+5. **WhatsApp Media Flow**:
+   - `POST` the JSON string as a Buffer to `graph.facebook.com/v19.0/{PHONE_ID}/media` using `form-data`.
+   - Take the returned `id` and `POST` it as a `document` message to the user.
+6. **Vercel Deploy**: Ensure `module.exports = app` is present in `server.js` for serverless compatibility.
 
 ---
 *Created on 2026-03-10*
