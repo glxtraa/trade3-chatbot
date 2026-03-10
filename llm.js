@@ -33,7 +33,7 @@ async function extractPurchaseOrder(messages) {
 
       const priceMatch = chatHistory.match(/(?:\$|USD|EUR)\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s*(?:\$|USD|EUR)/i);
       const qtyMatch = chatHistory.match(/(\d+(?:\.\d+)?)\s*(?:MT|metric tons|KG|units|CTN|items)\b/i);
-      const itemMatch = chatHistory.match(/(?:buy|order|of|item:)\s+([A-Za-z\s]{2,20})(?:\s+at|\s+for|\s+qty|$)/i);
+      const itemMatch = chatHistory.match(/(?:buy|order|item:)\s+(?:[\d.,]+\s*(?:MT|metric tons|KG|units|CTN|items)\s+)?(?:of\s+)?([A-Za-z\s]{2,30})/i);
       const dateMatch = chatHistory.match(/(?:by|delivery|eta|date:)\s+([A-Za-z0-9\s,-/]+)(?:\.|$)/i);
       const currencyMatch = chatHistory.match(/(USD|EUR|GBP|\$)/i);
 

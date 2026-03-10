@@ -57,48 +57,48 @@ app.get('/webhook', (req, res) => {
 /**
  * POST Webhook for incoming WhatsApp messages
  */
-app.post('/webhook', async (req, res) => {
-  // Acknowledge receipt to Meta immediately to avoid retries
-  res.sendStatus(200);
+const { body } = req;
+console.log("Incoming Webhook Request received.");
 
-  const { body } = req;
+if (body.object) {
+  // Basic structural validation for Meta webhook payload
+  if (
+    body.entry &&
+    body.entry[0].changes &&
+    body.entry[0].changes[0] &&
+    body.entry[0].changes[0].value.messages &&
+    body.entry[0].changes[0].value.messages[0]
+  ) {
+    const messageObj = body.entry[0].changes[0].value.messages[0];
+    const senderId = messageObj.from;
+    let textContent = '';
 
-  if (body.object) {
-    // Basic structural validation for Meta webhook payload
-    if (
-      body.entry &&
-      body.entry[0].changes &&
-      body.entry[0].changes[0] &&
-      body.entry[0].changes[0].value.messages &&
-      body.entry[0].changes[0].value.messages[0]
-    ) {
-      const messageObj = body.entry[0].changes[0].value.messages[0];
-      const senderId = messageObj.from;
-      let textContent = '';
+    if (messageObj.type === 'text') {
+      textContent = messageObj.text.body;
+    } else {
+      // Optionally handle document/image uploads here in future
+      console.log('Received non-text message type:', messageObj.type);
+      return;
+    }
 
-      if (messageObj.type === 'text') {
-        textContent = messageObj.text.body;
-      } else {
-        // Optionally handle document/image uploads here in future
-        console.log('Received non-text message type:', messageObj.type);
-        return;
-      }
+    // 1. Maintain Conversation State
+    let session = chatSessions.get(senderId) || { messages: [], lastActive: Date.now() };
+    session.messages.push(`User (${senderId}): ${textContent}`);
+    session.lastActive = Date.now();
+    chatSessions.set(senderId, session);
 
-      // 1. Maintain Conversation State
-      let session = chatSessions.get(senderId) || { messages: [], lastActive: Date.now() };
-      session.messages.push(`User (${senderId}): ${textContent}`);
-      session.lastActive = Date.now();
-      chatSessions.set(senderId, session);
+    console.log(`Received message from ${senderId}: ${textContent}`);
 
-      console.log(`Received message from ${senderId}: ${textContent}`);
-
-      // 2. Check for Trigger Word
-      if (textContent.trim().toUpperCase() === 'CONFIRM PO') {
-        // Run processing asynchronously to not block the current thread
-        processPurchaseOrder(senderId, session.messages).catch(console.error);
-      }
+    // 2. Check for Trigger Word
+    if (textContent.trim().toUpperCase() === 'CONFIRM PO') {
+      console.log(`Trigger "CONFIRM PO" received from ${senderId}. Starting extraction.`);
+      await processPurchaseOrder(senderId, session.messages);
     }
   }
+}
+
+// Send 200 OK at the end to ensure all async work finishes on Serverless (Vercel)
+res.sendStatus(200);
 });
 
 /**
@@ -106,6 +106,9 @@ app.post('/webhook', async (req, res) => {
  */
 async function processPurchaseOrder(senderId, messages) {
   try {
+    console.log(`Processing PO for ${senderId}. History Length: ${messages.length}`);
+    console.log("Full Message History for Extraction:", JSON.stringify(messages, null, 2));
+
     await sendWhatsAppMessage(senderId, "Processing your request. Compiling history and generating Purchase Order...");
 
     // 1. Extract JSON via LLM
